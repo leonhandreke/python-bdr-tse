@@ -7,97 +7,66 @@ import construct
 from bdr_tse import msc_transport
 
 
-# case(int16_t)
 # 0x8000:
 # return ErrorSECommunicationFailed;
-# case(int16_t)
 # 0x8001:
 # return ErrorTSECommandDataInvalid;
-# case(int16_t)
 # 0x8002:
 # return ErrorTSEResponseDataInvalid;
-# case(int16_t)
 # 0x8003:
 # return ErrorSigningSystemOperationDataFailed;
-# case(int16_t)
 # 0x8004:
 # return ErrorRetrieveLogMessageFailed;
-# case(int16_t)
 # 0x8005:
 # return ErrorStorageFailure;
-# case(int16_t)
 # 0x8006:
 # return ErrorSecureElementDisabled;
-# case(int16_t)
 # 0x8007:
 # return ErrorUserNotAuthorized;
-# case(int16_t)
 # 0x8008:
 # return ErrorUserNotAuthenticated;
-# case(int16_t)
 # 0x8009:
 # return ErrorSeApiNotInitialized;
-# case(int16_t)
 # 0x800A:
 # return ErrorUpdateTimeFailed;
-# case(int16_t)
 # 0x800B:
 # return ErrorUserIdNotManaged;
-# case(int16_t)
 # 0x800C:
 # return ErrorStartTransactionFailed;
-# case(int16_t)
 # 0x800D:
 # return ErrorCertificateExpired;
-# case(int16_t)
 # 0x800E:
 # return ErrorNoTransaction;
-# case(int16_t)
 # 0x800F:
 # return ErrorUpdateTransactionFailed;
-# case(int16_t)
 # 0x8010:
 # return ErrorFinishTransactionFailed;
-# case(int16_t)
 # 0x8011:
 # return ErrorTimeNotSet;
-# case(int16_t)
 # 0x8012:
 # return ErrorNoERS;
-# case(int16_t)
 # 0x8013:
 # return ErrorNoKey;
-# case(int16_t)
 # 0x8014:
 # return ErrorSeApiNotDeactivated;
-# case(int16_t)
 # 0x8015:
 # return ErrorNoDataAvailable;
-# case(int16_t)
 # 0x8016:
 # return ErrorTooManyRecords;
-# case(int16_t)
 # 0x8017:
 # return ErrorUnexportedStoredData;
-# case(int16_t)
 # 0x8018:
 # return ErrorParameterMismatch;
-# case(int16_t)
 # 0x8019:
 # return ErrorIdNotFound;
-# case(int16_t)
 # 0x801A:
 # return ErrorTransactionNumberNotFound;
-# case(int16_t)
 # 0x801B:
 # return ErrorSeApiDeactivated;
-# case(int16_t)
 # 0x801C:
 # return ErrorTransport;
-# case(int16_t)
 # 0x801D:
 # return ErrorNoStartup;
-# case(int16_t)
 # 0x801E:
 # return ErrorNoStorage;
 
@@ -151,7 +120,7 @@ class TransportDataType(enum.IntEnum):
     UINT32ARRAY = 0x05
 
 
-TransportDataTuple = Tuple[TransportDataType, Union[bytes, int, str, List[int]]]
+TransportDataTupleType = Tuple[TransportDataType, Union[bytes, int, str, List[int]]]
 
 TRANSPORT_DATA_PARAMETER = construct.Struct(
     "data_type" / construct.Int8ub,
@@ -175,7 +144,7 @@ class Transport:
     def __init__(self, tse_path):
         self._transport = msc_transport.MscTransport(tse_path)
 
-    def _encode(self, cmd, params: List[TransportDataTuple]) -> bytes:
+    def _encode(self, cmd, params: List[TransportDataTupleType]) -> bytes:
         return TRANSPORT_COMMAND_PACKET.build({
             "command": cmd,
             "command_data": list({"data_type": p[0], "data": p[1]} for p in params),
@@ -184,6 +153,6 @@ class Transport:
     def _decode(self, data):
         return TRANSPORT_RESPONSE_PACKET.parse(data)
 
-    def send(self, cmd, params: List[TransportDataTuple] = []):
+    def send(self, cmd, params: List[TransportDataTupleType] = []):
         self._transport.write(self._encode(cmd, params))
         return self._decode(self._transport.read()).response_data
