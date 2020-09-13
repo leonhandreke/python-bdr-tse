@@ -28,3 +28,15 @@ class TseConnector:
                 (TransportDataType.BYTE_ARRAY, time_admin_puk),
                 (TransportDataType.BYTE_ARRAY, time_admin_pin),
             ])
+
+    def factory_reset(self):
+        # Magic factory reset procedure pulled from decompiled JAR
+        self._transport.send(
+            TransportCommand.FactoryReset,
+            [(TransportDataType.BYTE_ARRAY, bytes([160, 0, 0, 1, 81, 83, 80, 65]))])
+        self._transport.send(
+            TransportCommand.FactoryReset,
+            [(TransportDataType.BYTE_ARRAY, bytes([0]))])
+        self._transport.send(
+            TransportCommand.FactoryReset,
+            [(TransportDataType.BYTE_ARRAY, bytes([0]))])

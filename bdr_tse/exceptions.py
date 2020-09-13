@@ -4,3 +4,7 @@ class BdrTseException(Exception):
 
 class TimeoutException(BdrTseException):
     pass
+
+
+class TransportError(BdrTseException):
+    pass

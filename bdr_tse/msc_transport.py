@@ -61,7 +61,7 @@ class MscTransport:
         # Get an aligned chunk of memory, required for O_DIRECT
         # See http://www.alexonlinux.com/direct-io-in-python
         self._aligned_buf = mmap.mmap(-1, BLOCK_SIZE)
-        # NOTE(Leon Handreke): Keeping the file open between writing and reading seems to be important
+        # NOTE(Leon Handreke): Keeping the file open between writing and reading seems to be required
         self._fd = os.open(self._get_tse_cmd_filepath(), os.O_RDWR | os.O_DIRECT)
         self.set_suspend(False)
 
