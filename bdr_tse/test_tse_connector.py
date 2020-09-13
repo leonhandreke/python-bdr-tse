@@ -1,3 +1,4 @@
+import logging
 from unittest import TestCase
 
 TSE_PATH = "/media/leon/304C-D627"
@@ -7,6 +8,8 @@ from bdr_tse import tse_connector
 class TestTseConnector(TestCase):
 
     def setUp(self):
+        logging.basicConfig(level=logging.DEBUG)
+
         self.tse = tse_connector.TseConnector(TSE_PATH)
 
     def test_get_pin_status(self):

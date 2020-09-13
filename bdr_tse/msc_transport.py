@@ -3,10 +3,13 @@ import re
 import os.path
 import time
 import mmap
+import logging
 
 import construct
 
 from bdr_tse.exceptions import TimeoutException
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT = 10.0
 BLOCK_SIZE = 8192
@@ -45,7 +48,7 @@ MSC_TRANSPORT_RESPONSE_PACKET = construct.Padded(BLOCK_SIZE, construct.Struct(
 ))
 
 
-def format_hex_for_log(data: bytes, length=200) -> str:
+def _format_hex_for_log(data: bytes, length=200) -> str:
     return ' '.join(re.findall("....", data.hex()[:length]))
 
 
@@ -84,12 +87,10 @@ class MscTransport:
         data = MSC_TRANSPORT_COMMAND_PACKET.build({
             "command_data": command_data
         })
-        print("Write: " + format_hex_for_log(data))
         self._write_block(data)
 
     def read(self):
         data = self._read_until_ready()
-        print("Response: " + format_hex_for_log(data))
         packet = MSC_TRANSPORT_RESPONSE_PACKET.parse(data)
 
         if packet.random_token == TOKEN:
@@ -103,6 +104,7 @@ class MscTransport:
         self._aligned_buf.write(data)
 
         os.lseek(self._fd, 0, os.SEEK_SET)
+        logger.debug("Write: " + _format_hex_for_log(data))
         os.writev(self._fd, [self._aligned_buf])
 
     def _read_block(self) -> bytes:
@@ -113,6 +115,7 @@ class MscTransport:
 
         self._aligned_buf.seek(0)
         data = self._aligned_buf.read(BLOCK_SIZE)
+        logger.debug("Read: " + _format_hex_for_log(data))
 
         return data
 
@@ -125,5 +128,4 @@ class MscTransport:
                 return data
             time.sleep(0.05)
 
-        print("Response: " + data.hex())
         raise TimeoutException
