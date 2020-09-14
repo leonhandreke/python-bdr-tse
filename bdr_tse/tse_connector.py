@@ -96,5 +96,10 @@ class TseConnector:
             ],
         )
 
+    def logout(self, user_id: UserId):
+        self._transport.send(
+            TransportCommand.Logout, [(TransportDataType.STRING, user_id.value)]
+        )
+
     def initialize(self):
         self._transport.send(TransportCommand.Initialize, [])
