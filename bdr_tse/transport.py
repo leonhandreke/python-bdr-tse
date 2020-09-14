@@ -89,19 +89,41 @@ class TransportCommand(enum.IntEnum):
     UpdateCertificate = 26
 
 
-class TransportDataType(enum.IntEnum):
+class TransportDataType:
     BYTE = 0x01
     BYTE_ARRAY = 0x02
     SHORT = 0x03
     STRING = 0x04
-    UINT32ARRAY = 0x05
+    LONG_ARRAY = 0x05
 
 
 TransportDataTupleType = Tuple[TransportDataType, Union[bytes, int, str, List[int]]]
 
-TRANSPORT_DATA_PARAMETER = construct.Struct(
-    "data_type" / construct.Int8ub,
-    "data" / construct.Prefixed(construct.Int16ub, construct.GreedyBytes))
+TRANSPORT_DATA_PARAMETER = construct.Select(
+        # BYTE
+        construct.Struct(
+            "data_type" / construct.Const(bytes([TransportDataType.BYTE])),
+            construct.Const(bytes([0x00, 0x01])),
+            "data" / construct.Byte),
+        # BYTE_ARRAY
+        construct.Struct(
+            "data_type" / construct.Const(bytes([TransportDataType.BYTE_ARRAY])),
+            "data" / construct.Prefixed(construct.Int16ub, construct.GreedyBytes)),
+        # SHORT
+        construct.Struct(
+            "data_type" / construct.Const(bytes([TransportDataType.SHORT])),
+            construct.Const(bytes([0x00, 0x02])),
+            "data" / construct.Int16ub),
+        # STRING
+        construct.Struct(
+            "data_type" / construct.Const(bytes([TransportDataType.STRING])),
+            "data" / construct.Prefixed(construct.Int16ub, construct.GreedyString("ascii"))),
+        # LONG_ARRAY
+        construct.Struct(
+            "data_type" / construct.Const(bytes([TransportDataType.LONG_ARRAY])),
+            construct.Const(bytes([0x00, 0x02])),
+            "data" / construct.Prefixed(construct.Int16ub, construct.GreedyRange(construct.Int32ub)))
+)
 
 TRANSPORT_COMMAND_PACKET = construct.Struct(
     construct.Const(bytes([0x5C, 0x54])),
@@ -127,6 +149,7 @@ TRANSPORT_RESPONSE_PACKET = construct.Struct(
         construct.GreedyRange(TRANSPORT_DATA_PARAMETER))
 )
 
+
 class Transport:
     def __init__(self, tse_path):
         self._transport = msc_transport.MscTransport(tse_path)
@@ -134,7 +157,7 @@ class Transport:
     def _encode(self, cmd, params: List[TransportDataTupleType]) -> bytes:
         return TRANSPORT_COMMAND_PACKET.build({
             "command": cmd,
-            "command_data": list({"data_type": p[0], "data": p[1]} for p in params),
+            "command_data": list({"data_type": bytes([p[0]]), "data": p[1]} for p in params),
         })
 
     def _decode(self, data):

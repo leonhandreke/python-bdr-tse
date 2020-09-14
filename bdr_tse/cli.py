@@ -1,4 +1,5 @@
 import logging
+import time
 
 import click
 
@@ -8,7 +9,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 @click.group()
 @click.pass_context
-@click.option("--tse_path", help='Path where the TSE is mounted')
+@click.option("--tse_path", required=True, help='Path where the TSE is mounted')
 def cli(ctx, tse_path):
     ctx.obj = TseConnector(tse_path)
 
@@ -41,11 +42,32 @@ def factory_reset(tse):
 def get_pin_status(tse):
     click.echo(tse.get_pin_status())
 
+@click.command()
+@click.pass_obj
+@click.option("--admin", is_flag=True, type=click.BOOL)
+@click.option("--time_admin", is_flag=True, type=click.BOOL)
+@click.option("--pin", type=click.STRING)
+def authenticate_user(tse: TseConnector, admin, time_admin, pin: str):
+    if time_admin == admin:
+        raise click.UsageError("Exactly one of admin and time_admin must be given")
+    user_id = TseConnector.UserId.ADMIN if admin else TseConnector.UserId.TIME_ADMIN
+    click.echo(tse.authenticate_user(user_id, pin.encode("ascii")))
+
+@click.command()
+@click.pass_obj
+@click.option("--time", "time_", type=click.INT)
+def update_time(tse: TseConnector, time_):
+    if not time_:
+        time_ = int(time.time())
+    tse.update_time(time_)
+
 
 cli.add_command(start)
 cli.add_command(initialize_pin_values)
 cli.add_command(factory_reset)
 cli.add_command(get_pin_status)
+cli.add_command(authenticate_user)
+cli.add_command(update_time)
 
 
 if __name__ == '__main__':

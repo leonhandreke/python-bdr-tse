@@ -1,6 +1,9 @@
 from typing import Tuple
+import struct
+import enum
 
 from bdr_tse.transport import TransportCommand, Transport, TransportDataType
+
 
 class TseConnector:
 
@@ -40,3 +43,33 @@ class TseConnector:
         self._transport.send(
             TransportCommand.FactoryReset,
             [(TransportDataType.BYTE_ARRAY, bytes([0]))])
+
+    class AuthenticationResult(enum.IntEnum):
+        SUCCESS = 0
+        FAILED = 1
+        PIN_BLOCKED = 2
+        UNKNOWN_USER_ID = 3
+        UNSPECIFIED_ERROR = 4
+
+    class UserId(enum.Enum):
+        ADMIN = "Admin"
+        TIME_ADMIN = "TimeAdmin"
+
+    def authenticate_user(self, user_id: UserId, pin: bytes):
+        response = self._transport.send(
+            TransportCommand.AuthenticateUser,
+            [
+                (TransportDataType.STRING, user_id.value),
+                (TransportDataType.BYTE_ARRAY, pin)
+            ])
+        return {
+            "authentication_result": TseConnector.AuthenticationResult(response[0].data),
+            "remaining_retries": response[1].data,
+        }
+
+    def update_time(self, time_):
+        self._transport.send(
+            TransportCommand.UpdateTime,
+            [
+                (TransportDataType.BYTE_ARRAY, struct.pack('>Q', time_)),
+            ])

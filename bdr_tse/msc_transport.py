@@ -94,9 +94,9 @@ class MscTransport:
         packet = MSC_TRANSPORT_RESPONSE_PACKET.parse(data)
 
         if packet.random_token == TOKEN:
+            # TODO(Leon Handreke): Better exception
             raise Exception
 
-        # TODO(Leon Handreke): Ensure that random token has changed
         return packet.response_data
 
     def _write_block(self, data: bytes):
