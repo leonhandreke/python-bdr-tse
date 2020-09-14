@@ -42,8 +42,9 @@ TRANSPORT_ERROR_CODES = {
     0x801E: TransportErrorNoStorage,
 }
 
+
 class TransportCommand(enum.IntEnum):
-    Start = 0x0000,
+    Start = (0x0000,)
 
     GetPinStates = 0x0001
     InitializePins = 0x0002
@@ -100,53 +101,61 @@ class TransportDataType:
 TransportDataTupleType = Tuple[TransportDataType, Union[bytes, int, str, List[int]]]
 
 TRANSPORT_DATA_PARAMETER = construct.Select(
-        # BYTE
-        construct.Struct(
-            "data_type" / construct.Const(bytes([TransportDataType.BYTE])),
-            construct.Const(bytes([0x00, 0x01])),
-            "data" / construct.Byte),
-        # BYTE_ARRAY
-        construct.Struct(
-            "data_type" / construct.Const(bytes([TransportDataType.BYTE_ARRAY])),
-            "data" / construct.Prefixed(construct.Int16ub, construct.GreedyBytes)),
-        # SHORT
-        construct.Struct(
-            "data_type" / construct.Const(bytes([TransportDataType.SHORT])),
-            construct.Const(bytes([0x00, 0x02])),
-            "data" / construct.Int16ub),
-        # STRING
-        construct.Struct(
-            "data_type" / construct.Const(bytes([TransportDataType.STRING])),
-            "data" / construct.Prefixed(construct.Int16ub, construct.GreedyString("ascii"))),
-        # LONG_ARRAY
-        construct.Struct(
-            "data_type" / construct.Const(bytes([TransportDataType.LONG_ARRAY])),
-            construct.Const(bytes([0x00, 0x02])),
-            "data" / construct.Prefixed(construct.Int16ub, construct.GreedyRange(construct.Int32ub)))
+    # BYTE
+    construct.Struct(
+        "data_type" / construct.Const(bytes([TransportDataType.BYTE])),
+        construct.Const(bytes([0x00, 0x01])),
+        "data" / construct.Byte,
+    ),
+    # BYTE_ARRAY
+    construct.Struct(
+        "data_type" / construct.Const(bytes([TransportDataType.BYTE_ARRAY])),
+        "data" / construct.Prefixed(construct.Int16ub, construct.GreedyBytes),
+    ),
+    # SHORT
+    construct.Struct(
+        "data_type" / construct.Const(bytes([TransportDataType.SHORT])),
+        construct.Const(bytes([0x00, 0x02])),
+        "data" / construct.Int16ub,
+    ),
+    # STRING
+    construct.Struct(
+        "data_type" / construct.Const(bytes([TransportDataType.STRING])),
+        "data" / construct.Prefixed(construct.Int16ub, construct.GreedyString("ascii")),
+    ),
+    # LONG_ARRAY
+    construct.Struct(
+        "data_type" / construct.Const(bytes([TransportDataType.LONG_ARRAY])),
+        construct.Const(bytes([0x00, 0x02])),
+        "data"
+        / construct.Prefixed(
+            construct.Int16ub, construct.GreedyRange(construct.Int32ub)
+        ),
+    ),
 )
 
 TRANSPORT_COMMAND_PACKET = construct.Struct(
     construct.Const(bytes([0x5C, 0x54])),
     "command" / construct.Int16ub,
-    "command_data" / construct.Prefixed(
-        construct.Int16ub,
-        construct.GreedyRange(TRANSPORT_DATA_PARAMETER))
+    "command_data"
+    / construct.Prefixed(
+        construct.Int16ub, construct.GreedyRange(TRANSPORT_DATA_PARAMETER)
+    ),
 )
 
 TRANSPORT_COMMAND_RAW_PACKET = construct.Struct(
     construct.Const(bytes([0x5C, 0x54])),
     "command" / construct.Int16ub,
-    "command_data" / construct.Prefixed(
-        construct.Int16ub, construct.GreedyBytes)
+    "command_data" / construct.Prefixed(construct.Int16ub, construct.GreedyBytes),
 )
 
-TRANSPORT_ERROR_RESPONSE_PACKET = construct.Struct(
-    "error_code" / construct.Int16ub)
+TRANSPORT_ERROR_RESPONSE_PACKET = construct.Struct("error_code" / construct.Int16ub)
 
 TRANSPORT_RESPONSE_PACKET = construct.Struct(
-    "response_data" / construct.Prefixed(
-        construct.Int16ub,
-        construct.GreedyRange(TRANSPORT_DATA_PARAMETER))
+    "response_data"
+    / construct.Prefixed(
+        construct.Int16ub, construct.GreedyRange(TRANSPORT_DATA_PARAMETER)
+    )
 )
 
 
@@ -155,10 +164,14 @@ class Transport:
         self._transport = msc_transport.MscTransport(tse_path)
 
     def _encode(self, cmd, params: List[TransportDataTupleType]) -> bytes:
-        return TRANSPORT_COMMAND_PACKET.build({
-            "command": cmd,
-            "command_data": list({"data_type": bytes([p[0]]), "data": p[1]} for p in params),
-        })
+        return TRANSPORT_COMMAND_PACKET.build(
+            {
+                "command": cmd,
+                "command_data": list(
+                    {"data_type": bytes([p[0]]), "data": p[1]} for p in params
+                ),
+            }
+        )
 
     def _decode(self, data):
         return TRANSPORT_RESPONSE_PACKET.parse(data)
@@ -170,7 +183,9 @@ class Transport:
         # If MSB is set, response is an error
         if raw_response[0] & 0x80:
             error_response = TRANSPORT_ERROR_RESPONSE_PACKET.parse(raw_response)
-            raise TRANSPORT_ERROR_CODES.get(error_response.error_code, exceptions.BdrTseException)
+            raise TRANSPORT_ERROR_CODES.get(
+                error_response.error_code, exceptions.BdrTseException
+            )
 
         response = TRANSPORT_RESPONSE_PACKET.parse(raw_response)
         return response.response_data

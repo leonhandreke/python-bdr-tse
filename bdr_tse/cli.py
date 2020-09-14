@@ -8,8 +8,8 @@ from bdr_tse.tse_connector import TseConnector
 
 @click.group()
 @click.pass_context
-@click.option("--tse_path", required=True, help='Path where the TSE is mounted')
-@click.option("--debug", is_flag=True, help='Enable debug logging')
+@click.option("--tse_path", required=True, help="Path where the TSE is mounted")
+@click.option("--debug", is_flag=True, help="Enable debug logging")
 def cli(ctx, tse_path, debug):
     ctx.obj = TseConnector(tse_path)
     if debug:
@@ -21,6 +21,7 @@ def cli(ctx, tse_path, debug):
 def start(tse):
     click.echo(tse.start())
 
+
 @click.command()
 @click.pass_obj
 @click.option("--admin_puk", required=True, type=click.STRING)
@@ -29,16 +30,18 @@ def start(tse):
 @click.option("--time_admin_pin", required=True, type=click.STRING)
 def initialize_pin_values(tse, admin_puk, admin_pin, time_admin_puk, time_admin_pin):
     tse.initialize_pin_values(
-        admin_puk=admin_puk.encode('ascii'),
-        admin_pin=admin_pin.encode('ascii'),
-        time_admin_puk=time_admin_puk.encode('ascii'),
-        time_admin_pin=time_admin_pin.encode('ascii'),
+        admin_puk=admin_puk.encode("ascii"),
+        admin_pin=admin_pin.encode("ascii"),
+        time_admin_puk=time_admin_puk.encode("ascii"),
+        time_admin_pin=time_admin_pin.encode("ascii"),
     )
+
 
 @click.command()
 @click.pass_obj
 def factory_reset(tse):
     tse.factory_reset()
+
 
 @click.command()
 @click.pass_obj
@@ -69,12 +72,8 @@ def unblock_user(tse: TseConnector, admin, time_admin, puk: str, new_pin):
         raise click.UsageError("Exactly one of admin and time_admin must be given")
     user_id = TseConnector.UserId.ADMIN if admin else TseConnector.UserId.TIME_ADMIN
 
-    click.echo(
-        tse.unblock_user(
-            user_id,
-            puk.encode("ascii"),
-            new_pin.encode("ascii")
-        ))
+    click.echo(tse.unblock_user(user_id, puk.encode("ascii"), new_pin.encode("ascii")))
+
 
 @click.command()
 @click.pass_obj
@@ -101,5 +100,5 @@ cli.add_command(initialize)
 cli.add_command(update_time)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cli()

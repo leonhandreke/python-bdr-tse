@@ -5,8 +5,8 @@ TSE_PATH = "/media/leon/304C-D627"
 
 from bdr_tse import tse_connector
 
-class TestTseConnector(TestCase):
 
+class TestTseConnector(TestCase):
     def setUp(self):
         logging.basicConfig(level=logging.DEBUG)
 

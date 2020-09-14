@@ -123,5 +123,3 @@ class TransportErrorNoStartup(TransportError):
 
 class TransportErrorNoStorage(TransportError):
     pass
-
-
