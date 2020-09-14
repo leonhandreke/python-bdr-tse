@@ -5,13 +5,16 @@ import click
 
 from bdr_tse.tse_connector import TseConnector
 
-logging.basicConfig(level=logging.DEBUG)
 
 @click.group()
 @click.pass_context
 @click.option("--tse_path", required=True, help='Path where the TSE is mounted')
-def cli(ctx, tse_path):
+@click.option("--debug", is_flag=True, help='Enable debug logging')
+def cli(ctx, tse_path, debug):
     ctx.obj = TseConnector(tse_path)
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
+
 
 @click.command()
 @click.pass_obj
@@ -42,6 +45,7 @@ def factory_reset(tse):
 def get_pin_status(tse):
     click.echo(tse.get_pin_status())
 
+
 @click.command()
 @click.pass_obj
 @click.option("--admin", is_flag=True, type=click.BOOL)
@@ -53,6 +57,25 @@ def authenticate_user(tse: TseConnector, admin, time_admin, pin: str):
     user_id = TseConnector.UserId.ADMIN if admin else TseConnector.UserId.TIME_ADMIN
     click.echo(tse.authenticate_user(user_id, pin.encode("ascii")))
 
+
+@click.command()
+@click.pass_obj
+@click.option("--admin", is_flag=True, type=click.BOOL)
+@click.option("--time_admin", is_flag=True, type=click.BOOL)
+@click.option("--puk", type=click.STRING)
+@click.option("--new_pin", type=click.STRING)
+def unblock_user(tse: TseConnector, admin, time_admin, puk: str, new_pin):
+    if time_admin == admin:
+        raise click.UsageError("Exactly one of admin and time_admin must be given")
+    user_id = TseConnector.UserId.ADMIN if admin else TseConnector.UserId.TIME_ADMIN
+
+    click.echo(
+        tse.unblock_user(
+            user_id,
+            puk.encode("ascii"),
+            new_pin.encode("ascii")
+        ))
+
 @click.command()
 @click.pass_obj
 @click.option("--time", "time_", type=click.INT)
@@ -62,11 +85,19 @@ def update_time(tse: TseConnector, time_):
     tse.update_time(time_)
 
 
+@click.command()
+@click.pass_obj
+def initialize(tse: TseConnector):
+    tse.initialize()
+
+
 cli.add_command(start)
 cli.add_command(initialize_pin_values)
 cli.add_command(factory_reset)
 cli.add_command(get_pin_status)
 cli.add_command(authenticate_user)
+cli.add_command(unblock_user)
+cli.add_command(initialize)
 cli.add_command(update_time)
 
 

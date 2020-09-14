@@ -13,8 +13,8 @@ class TseConnector:
     def start(self):
         response = self._transport.send(TransportCommand.Start)
         return {
-            "version": response[0].data.decode(),
-            "serial": response[1].data.hex(),
+            "version": response[0].data,
+            "serial": response[1].data,
         }
 
     def get_pin_status(self) -> Tuple[bool, bool, bool, bool]:
@@ -67,9 +67,22 @@ class TseConnector:
             "remaining_retries": response[1].data,
         }
 
+    def unblock_user(self, user_id: UserId, puk: bytes, new_pin: bytes):
+        response = self._transport.send(
+            TransportCommand.UnblockUser,
+            [
+                (TransportDataType.STRING, user_id.value),
+                (TransportDataType.BYTE_ARRAY, puk),
+                (TransportDataType.BYTE_ARRAY, new_pin),
+            ])
+        return TseConnector.AuthenticationResult(response[0].data)
+
     def update_time(self, time_):
         self._transport.send(
             TransportCommand.UpdateTime,
             [
                 (TransportDataType.BYTE_ARRAY, struct.pack('>Q', time_)),
             ])
+
+    def initialize(self):
+        self._transport.send(TransportCommand.Initialize, [])
