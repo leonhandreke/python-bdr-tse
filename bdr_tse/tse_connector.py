@@ -10,6 +10,12 @@ class TseConnector:
         self._transport = Transport(tse_path)
 
     def start(self):
+        """Initializes the secure element and loads configuration data.
+
+        :return: A dict containing:
+            * ``version``: The version of the TSE.
+            * ``serial``: The serial number of the TSE.
+        """
         response = self._transport.send(TransportCommand.Start)
         return {
             "version": response[0].data,
@@ -17,9 +23,19 @@ class TseConnector:
         }
 
     def get_pin_status(self) -> Tuple[bool, bool, bool, bool]:
+        """Returns the PIN/PUK transport states.
+
+        Note that the value True means that the PIN is still in transport state. A
+        fully-initialized TSE will return all as False.
+        """
         response = self._transport.send(TransportCommand.GetPinStates)
         states = response[0].data
-        return list(bool(b) for b in states)
+        return {
+            "admin_pin_transport_state": bool(states[0]),
+            "admin_puk_transport_state": bool(states[1]),
+            "time_admin_pin_transport_state": bool(states[2]),
+            "time_admin_puk_transport_state": bool(states[3]),
+        }
 
     def initialize_pin_values(
         self,
@@ -28,6 +44,14 @@ class TseConnector:
         time_admin_puk: bytes,
         time_admin_pin: bytes,
     ):
+        """Initialize TSE PIN values.
+
+        :param admin_puk: The PUK to set for the Admin account. Must be exactly 10 bytes long.
+        :param admin_pin: The PUK to set for the Admin account. Must be exactly 10 bytes long.
+        :param time_admin_puk: The PUK to set for the TimeAdmin account. Must be exactly 8 bytes long.
+        :param time_admin_pin: The PUK to set for the TimeAdmin account. Must be exactly 8 bytes long.
+
+        """
         self._transport.send(
             TransportCommand.InitializePins,
             [
@@ -39,6 +63,10 @@ class TseConnector:
         )
 
     def factory_reset(self):
+        """Resets the TSE to factory state.
+
+        Note that this is only possible with TSE Engineering Samples.
+        """
         # Magic factory reset procedure pulled from decompiled JAR
         self._transport.send(
             TransportCommand.FactoryReset,
@@ -63,6 +91,15 @@ class TseConnector:
         TIME_ADMIN = "TimeAdmin"
 
     def authenticate_user(self, user_id: UserId, pin: bytes):
+        """Authenticate a user.
+
+        :param user_id: The user ID of the user to authenticate.
+        :param pin: The PIN to authenticate with.
+        :return: A dictionary containing
+            * ``authentication_result``: A ``TseConnector.AuthenticationResult``
+            * ``remaining_retries``: The number of authentication retries left. Only
+                relevant after having failed authentication.
+        """
         response = self._transport.send(
             TransportCommand.AuthenticateUser,
             [
@@ -78,6 +115,15 @@ class TseConnector:
         }
 
     def unblock_user(self, user_id: UserId, puk: bytes, new_pin: bytes):
+        """This command unblocks a user that has been blocked due to too much failed
+        authentication attempts against the stored credentials (PIN). It
+        authenticates using the PUK and sets new credentials (PIN).
+
+        :param user_id: The user ID to unblock.
+        :param puk; The PUK to authenticate with.
+        :param new_pin: The new PIN to set for the user.
+        :return: A ``TransportDataType.AuthenticationResult``
+        """
         response = self._transport.send(
             TransportCommand.UnblockUser,
             [
@@ -88,7 +134,11 @@ class TseConnector:
         )
         return TseConnector.AuthenticationResult(response[0].data)
 
-    def update_time(self, time_):
+    def update_time(self, time_: int):
+        """Update the system time of the TSE.
+
+        :param time_: The time to set as a UNIX timestamp.
+        """
         self._transport.send(
             TransportCommand.UpdateTime,
             [
@@ -97,9 +147,11 @@ class TseConnector:
         )
 
     def logout(self, user_id: UserId):
+        """Log out an authenticated user."""
         self._transport.send(
             TransportCommand.Logout, [(TransportDataType.STRING, user_id.value)]
         )
 
     def initialize(self):
-        self._transport.send(TransportCommand.Initialize, [])
+        """Initialize the TSE."""
+        self._transport.send(TransportCommand.Initialize)
