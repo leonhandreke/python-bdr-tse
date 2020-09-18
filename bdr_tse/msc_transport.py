@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT = 10.0
 BLOCK_SIZE = 8192
+
+# The token that we always send to the TSE in the header
 TOKEN = bytes([0xDE, 0xAD, 0xBE, 0xEF])
 
 HEADER_CON = "header" / construct.Const(
@@ -49,6 +51,7 @@ HEADER_CON = "header" / construct.Const(
         ]
     )
 )
+
 TOKEN_CON = "token" / construct.Const(TOKEN)
 RANDOM_TOKEN_CON = "random_token" / construct.Byte[4]
 
@@ -70,7 +73,7 @@ MSC_TRANSPORT_ENABLE_SUSPEND_PACKET = construct.Padded(
     ),
 )
 
-MSC_TRANSPORT_SUSPEND_COMMAND_RESPONSE = construct.Padded(
+MSC_TRANSPORT_SUSPEND_RESPONSE_PACKET = construct.Padded(
     BLOCK_SIZE,
     construct.Struct(HEADER_CON, RANDOM_TOKEN_CON, construct.Const(bytes([0x00]))),
 )
@@ -104,6 +107,12 @@ def _format_hex_for_log(data: bytes, length=200) -> str:
 
 
 class MscTransport:
+    """Transport adapter that implements the mass storage class (MSC) interface to
+    the TSE. This transport adapter uses a single file in the root directory of the
+    user-accessible portion of the TSE, named ``TSE-IO.bin``, for communication.
+    By writing to and reading from this file (bypassing OS buffers) request/response
+    cycles can be exchanged with the TSE."""
+
     CMD_FILENAME = "TSE-IO.bin"
 
     def __init__(self, tse_path):
@@ -112,7 +121,8 @@ class MscTransport:
         # Get an aligned chunk of memory, required for O_DIRECT
         # See http://www.alexonlinux.com/direct-io-in-python
         self._aligned_buf = mmap.mmap(-1, BLOCK_SIZE)
-        # NOTE(Leon Handreke): Keeping the file open between writing and reading seems to be required
+        # O_DIRECT is required to bypass OS buffers. Keeping the file open between
+        # read and write seems to be required.
         self._fd = os.open(self._get_tse_cmd_filepath(), os.O_RDWR | os.O_DIRECT)
         self.set_suspend(False)
 
@@ -125,7 +135,8 @@ class MscTransport:
     def _get_tse_cmd_filepath(self):
         return os.path.join(self.tse_path, MscTransport.CMD_FILENAME)
 
-    def set_suspend(self, suspend: bool):
+    def set_suspend(self, suspend: bool, timeout=DEFAULT_TIMEOUT):
+        """Sets the suspend mode of the TSE."""
         packet = (
             MSC_TRANSPORT_ENABLE_SUSPEND_PACKET
             if suspend
@@ -134,16 +145,27 @@ class MscTransport:
         self._write_block(packet.build({}))
 
         # Ensure that the operation was completed successfully by parsing the response.
-        data = self._read_until_ready()
-        MSC_TRANSPORT_SUSPEND_COMMAND_RESPONSE.parse(data)
+        data = self._read_until_ready(timeout=timeout)
+        MSC_TRANSPORT_SUSPEND_RESPONSE_PACKET.parse(data)
 
-    def write(self, command_data):
+    def write(self, command_data: bytes):
+        """Write a block of command data to the TSE.
+
+        :param command_data: The command data to write
+        """
         data = MSC_TRANSPORT_COMMAND_PACKET.build({"command_data": command_data})
         self._write_block(data)
 
-    def read(self):
-        data = self._read_until_ready()
+    def read(self, timeout=DEFAULT_TIMEOUT):
+        """Read a response to a command from the TSE. Will wait until a reply is
+         ready.
+
+        :param timeout: The timeout for waiting for a reply.
+        :return: The response data.
+        """
+        data = self._read_until_ready(timeout=timeout)
         packet = MSC_TRANSPORT_RESPONSE_PACKET.parse(data)
+        # TODO(Leon Handreke): Implement multi-fragment response
 
         if packet.random_token == TOKEN:
             # TODO(Leon Handreke): Better exception
@@ -171,7 +193,7 @@ class MscTransport:
 
         return data
 
-    def _read_until_ready(self, timeout=DEFAULT_TIMEOUT) -> bytes:
+    def _read_until_ready(self, timeout) -> bytes:
         max_time = time.time() + timeout
         # TODO(Leon Handreke): Timeout
         while time.time() < max_time:
