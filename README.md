@@ -31,6 +31,11 @@ python-bdr-tse ships with a simple CLI that more or less directly exposes the TS
 commands. When installed with pip, just run `bdr-tse`.
 
 ## Contributing
+
+### Reporting issues
+
+Please use the Github Issue Tracker to report issues.
+
 ### Code Style
 
 python-bdr-tse uses the [Black](https://github.com/psf/black) code formatter. Use
