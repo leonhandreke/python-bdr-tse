@@ -25,6 +25,8 @@ import bdr_tse
 tse = bdr_tse.TseConnector(tse_path="/media/tse")
 ```
 
+Documentation (scarce, but hopefully growing) is available at https://python-bdr-tse.readthedocs.io/
+
 ## Command Line Interface
 
 python-bdr-tse ships with a simple CLI that more or less directly exposes the TSE
