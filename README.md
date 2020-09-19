@@ -9,7 +9,7 @@ cryptographically signed.
 Good documentation on KassenSichV, GoBD requirements for electronic cashier systems
 and  how these various requirements interact is provided in a document by Deutscher
 Fachverband für Kassen- und Abrechnungssystemtechnik e.V.: [Zusammenstellung der
-Beschlüsse und Bun- deskonventionen zu den Standardtabellen im Bereich der
+Beschlüsse und Bundeskonventionen zu den Standardtabellen im Bereich der
  Kassenbuchhaltung - Digitale Schnittstelle der Finanzverwaltung für Kassensysteme
   (DSFinV-K)](https://dfka.net/wp-content/uploads/2019/08/20190802_DSFinV_K_V_2_0.pdf)
 
@@ -28,7 +28,7 @@ tse = bdr_tse.TseConnector(tse_path="/media/tse")
 ## Command Line Interface
 
 python-bdr-tse ships with a simple CLI that more or less directly exposes the TSE
-commands. When installed with pip, it is accessible by running `bdr-tse`.
+commands. When installed with pip, just run `bdr-tse`.
 
 ## Contributing
 ### Code Style
