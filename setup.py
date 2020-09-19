@@ -10,6 +10,6 @@ setup(
     ],
     entry_points="""
         [console_scripts]
-        bdr_tse=bdr_tse.cli:cli
+        bdr-tse=bdr_tse.cli:cli
     """,
 )
