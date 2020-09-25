@@ -143,19 +143,17 @@ TRANSPORT_COMMAND_PACKET = construct.Struct(
     ),
 )
 
-TRANSPORT_COMMAND_RAW_PACKET = construct.Struct(
-    construct.Const(bytes([0x5C, 0x54])),
-    "command" / construct.Int16ub,
-    "command_data" / construct.Prefixed(construct.Int16ub, construct.GreedyBytes),
-)
+TRANSPORT_COMMAND_CONTINUE_FRAGMENTED_READ = bytes([0xC5])
+TRANSPORT_COMMAND_ABORT_FRAGMENTED_READ = bytes([0xC4])
 
 TRANSPORT_ERROR_RESPONSE_PACKET = construct.Struct("error_code" / construct.Int16ub)
 
 TRANSPORT_RESPONSE_PACKET = construct.Struct(
-    "response_data"
-    / construct.Prefixed(
-        construct.Int16ub, construct.GreedyRange(TRANSPORT_DATA_PARAMETER)
-    )
+    "response_data_length"
+    / construct.Rebuild(
+        construct.Int16ub, construct.len_(construct.this.response_data)
+    ),
+    "response_data" / construct.GreedyRange(TRANSPORT_DATA_PARAMETER),
 )
 
 
@@ -188,4 +186,17 @@ class Transport:
             )
 
         response = TRANSPORT_RESPONSE_PACKET.parse(raw_response)
-        return response.response_data
+
+        # NOTE(Leon Handreke): This may have to become a generator for better memory
+        # efficiency in the future.
+        full_response_data: bytes = response.response_data
+
+        while len(full_response_data) < response.response_data_length:
+            self._transport.write(TRANSPORT_COMMAND_CONTINUE_FRAGMENTED_READ)
+            try:
+                full_response_data += self._transport.read()
+            except exceptions.BdrTseException as e:
+                self._transport.write(TRANSPORT_COMMAND_ABORT_FRAGMENTED_READ)
+                raise e
+
+        return full_response_data
