@@ -1,5 +1,4 @@
 from typing import Tuple
-import struct
 import enum
 
 from bdr_tse.transport import TransportCommand, Transport, TransportDataType
@@ -67,7 +66,7 @@ class TseConnector:
 
         Note that this is only possible with TSE Engineering Samples.
         """
-        # Magic factory reset procedure pulled from decompiled JAR
+        # Magic factory reset procedure pulled from decompiled factory reset tool JAR
         self._transport.send(
             TransportCommand.FactoryReset,
             [(TransportDataType.BYTE_ARRAY, bytes([160, 0, 0, 1, 81, 83, 80, 65]))],
@@ -142,7 +141,7 @@ class TseConnector:
         self._transport.send(
             TransportCommand.UpdateTime,
             [
-                (TransportDataType.BYTE_ARRAY, struct.pack(">Q", time_)),
+                (TransportDataType.BYTE_ARRAY, time_.to_bytes(8, "big")),
             ],
         )
 
@@ -155,3 +154,98 @@ class TseConnector:
     def initialize(self):
         """Initialize the TSE."""
         self._transport.send(TransportCommand.Initialize)
+
+    def get_serial_number(self):
+        """Get the key serial number from the TSE.
+
+        A serial number is a hash value of a public key that belongs to a key pair
+        whose private key is used to create signature values of log messages.
+
+        Note that the API differs from the vendor-supplied API here. Since the TSE
+        does not have the ability to generate new keys after initialization,
+        there will only ever be one key. This function instead returns the serial
+        number of this one key.
+        """
+
+        response = self._transport.send(TransportCommand.GetSerialNumbers)
+        # This data is apparently ASN.1 encoded, but the examples supplied by the
+        # vendor just use bytes [6:32+6] to avoid parsing it.
+        return response[0].data[6 : 32 + 6]
+
+    def start_transaction(
+        self,
+        client_id: str,
+        process_data: bytes,
+        process_type: str,
+        additional_data: bytes = bytes(),
+    ):
+        """Opens a new transaction.
+
+        :param client_id: The client ID.
+        :param process_data: Process data for the transaction.
+        :param process_type: Process type for the transaction.
+        :param additional_data: Additional data for the transaction.
+        """
+        response = self._transport.send(
+            TransportCommand.StartTransaction,
+            [
+                (TransportDataType.STRING, client_id),
+                (TransportDataType.BYTE_ARRAY, process_data),
+                (TransportDataType.STRING, process_type),
+                (TransportDataType.BYTE_ARRAY, additional_data),
+            ],
+        )
+        return {
+            "transaction_number": int.from_bytes(response[0].data, "big"),
+            "signature_counter": int.from_bytes(response[1].data, "big"),
+            "log_time": int.from_bytes(response[2].data, "big"),
+            "signature_value": response[3].data,
+            "serial_number": response[4].data,
+        }
+
+    def finish_transaction(
+        self,
+        transaction_number: int,
+        client_id: str,
+        process_data: bytes,
+        process_type: str,
+        additional_data: bytes,
+    ):
+        """Closes a transaction transaction.
+
+        :param transaction_number: The transaction number to finish.
+        :param client_id: The client ID.
+        :param process_data: Process data for the transaction.
+        :param process_type: Process type for the transaction.
+        :param additional_data: Additional data for the transaction.
+        """
+        response = self._transport.send(
+            TransportCommand.StartTransaction,
+            [
+                (TransportDataType.BYTE_ARRAY, transaction_number.to_bytes(4, "big")),
+                (TransportDataType.STRING, client_id),
+                (TransportDataType.BYTE_ARRAY, process_data),
+                (TransportDataType.STRING, process_type),
+                (TransportDataType.BYTE_ARRAY, additional_data),
+            ],
+        )
+        return {
+            "signature_counter": int.from_bytes(response[0].data, "big"),
+            "log_time": int.from_bytes(response[1].data, "big"),
+            "signature_value": response[2].data,
+            "serial_number": response[3].data,
+        }
+
+    def map_ers_to_key(self, client_id: str, key_serial_number: bytes):
+        """This command maps an ERS to a specific key.
+
+        :param client_id: The client ID.
+        :param key_serial_number: The key serial number.
+        """
+        self._transport.send(
+            TransportCommand.MapERStoKey,
+            [
+                (TransportDataType.STRING, client_id),
+                (TransportDataType.BYTE_ARRAY, key_serial_number),
+            ],
+        )

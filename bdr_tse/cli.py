@@ -1,3 +1,5 @@
+import binascii
+from datetime import datetime
 import logging
 import time
 
@@ -19,7 +21,9 @@ def cli(ctx, tse_path, debug):
 @click.command()
 @click.pass_obj
 def start(tse):
-    click.echo(tse.start())
+    response = tse.start()
+    response["serial"] = response["serial"].hex()
+    click.echo(response)
 
 
 @click.command()
@@ -99,6 +103,39 @@ def initialize(tse: TseConnector):
     tse.initialize()
 
 
+@click.command()
+@click.pass_obj
+def get_serial_number(tse: TseConnector):
+    click.echo(tse.get_serial_number().hex())
+
+
+@click.command()
+@click.pass_obj
+@click.option("--client_id", required=True, type=click.STRING)
+@click.option("--process_data", required=True, type=click.STRING)
+@click.option("--process_type", required=True, type=click.STRING)
+def start_transaction(tse: TseConnector, client_id, process_data, process_type):
+    response = tse.start_transaction(
+        client_id=client_id,
+        process_data=process_data.encode("ascii"),
+        process_type=process_type,
+    )
+    response["signature_value"] = response["signature_value"].hex()
+    response["serial_number"] = response["serial_number"].hex()
+    response["log_time"] = datetime.fromtimestamp(response["log_time"]).isoformat()
+    click.echo(response)
+
+
+@click.command()
+@click.pass_obj
+@click.option("--client_id", required=True, type=click.STRING)
+@click.option("--key_serial_number", required=True, type=click.STRING)
+def map_ers_to_key(tse: TseConnector, client_id, key_serial_number):
+    return tse.map_ers_to_key(
+        client_id=client_id, key_serial_number=binascii.unhexlify(key_serial_number)
+    )
+
+
 cli.add_command(start)
 cli.add_command(initialize_pin_values)
 cli.add_command(factory_reset)
@@ -108,6 +145,9 @@ cli.add_command(unblock_user)
 cli.add_command(logout)
 cli.add_command(initialize)
 cli.add_command(update_time)
+cli.add_command(start_transaction)
+cli.add_command(get_serial_number)
+cli.add_command(map_ers_to_key)
 
 
 if __name__ == "__main__":
