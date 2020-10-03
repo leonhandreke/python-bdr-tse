@@ -21,7 +21,7 @@ class TseConnector:
             "serial": response[1].data,
         }
 
-    def get_pin_status(self) -> Tuple[bool, bool, bool, bool]:
+    def get_pin_status(self):
         """Returns the PIN/PUK transport states.
 
         Note that the value True means that the PIN is still in transport state. A
@@ -249,3 +249,46 @@ class TseConnector:
                 (TransportDataType.BYTE_ARRAY, key_serial_number),
             ],
         )
+
+    def export_data(
+        self,
+        client_id: str = None,
+        transaction_number: int = None,
+        start_transaction_number: int = None,
+        end_transaction_number: int = None,
+        start_date: int = None,
+        end_date: int = None,
+        max_records: int = None,
+    ):
+        """Exports data from the TSE."""
+        response = self._transport.send(
+            TransportCommand.ExportData,
+            [
+                (TransportDataType.STRING, client_id or ""),
+                (
+                    TransportDataType.BYTE_ARRAY,
+                    (transaction_number or 0xFFFFFFFF).to_bytes(4, "big"),
+                ),
+                (
+                    TransportDataType.BYTE_ARRAY,
+                    (start_transaction_number or 0x00000000).to_bytes(4, "big"),
+                ),
+                (
+                    TransportDataType.BYTE_ARRAY,
+                    (end_transaction_number or 0xFFFFFFFF).to_bytes(4, "big"),
+                ),
+                (
+                    TransportDataType.BYTE_ARRAY,
+                    (start_date or 0x0000000000000000).to_bytes(8, "big"),
+                ),
+                (
+                    TransportDataType.BYTE_ARRAY,
+                    (end_date or 0xFFFFFFFFFFFFFFFF).to_bytes(8, "big"),
+                ),
+                (
+                    TransportDataType.BYTE_ARRAY,
+                    (max_records or 0xFFFFFFFF).to_bytes(4, "big"),
+                ),
+            ],
+        )
+        return response

@@ -1,12 +1,15 @@
 from typing import Tuple, List, Union
 import enum
-import time
+import logging
 
 import construct
 
 from bdr_tse import msc_transport
 from bdr_tse import exceptions
 from bdr_tse.transport_errors import *
+
+
+logger = logging.getLogger(__name__)
 
 TRANSPORT_ERROR_CODES = {
     0x8000: TransportErrorSECommunicationFailed,
@@ -148,13 +151,24 @@ TRANSPORT_COMMAND_ABORT_FRAGMENTED_READ = bytes([0xC4])
 
 TRANSPORT_ERROR_RESPONSE_PACKET = construct.Struct("error_code" / construct.Int16ub)
 
+TRANSPORT_EXPORT_DATA_RESPONSE_PACKET = construct.Struct(
+    construct.Const(bytes([0x90, 0x00])),
+    "response_data_length"
+    / construct.Rebuild(
+        construct.Int64ub, construct.len_(construct.this.response_data)
+    ),
+    "response_data" / construct.GreedyBytes,
+)
+
 TRANSPORT_RESPONSE_PACKET = construct.Struct(
     "response_data_length"
     / construct.Rebuild(
         construct.Int16ub, construct.len_(construct.this.response_data)
     ),
-    "response_data" / construct.GreedyRange(TRANSPORT_DATA_PARAMETER),
+    "response_data" / construct.GreedyBytes,
 )
+
+TRANSPORT_RESULT = construct.GreedyRange(TRANSPORT_DATA_PARAMETER)
 
 
 class Transport:
@@ -178,14 +192,20 @@ class Transport:
         self._transport.write(self._encode(cmd, params))
         raw_response = self._transport.read()
 
-        # If MSB is set, response is an error
-        if raw_response[0] & 0x80:
+        # Response is an error response
+        if int.from_bytes(raw_response[:2], "big") in range(0x8000, 0x9000):
             error_response = TRANSPORT_ERROR_RESPONSE_PACKET.parse(raw_response)
+            logger.debug("Received response with error code %s", error_response)
             raise TRANSPORT_ERROR_CODES.get(
                 error_response.error_code, exceptions.BdrTseException
             )
-
-        response = TRANSPORT_RESPONSE_PACKET.parse(raw_response)
+        # Response is an ExportData response
+        elif int.from_bytes(raw_response[:2], "big") == 0x9000:
+            response = TRANSPORT_EXPORT_DATA_RESPONSE_PACKET.parse(raw_response)
+            is_export_data_response = True
+        else:
+            response = TRANSPORT_RESPONSE_PACKET.parse(raw_response)
+            is_export_data_response = False
 
         # NOTE(Leon Handreke): This may have to become a generator for better memory
         # efficiency in the future.
@@ -199,4 +219,7 @@ class Transport:
                 self._transport.write(TRANSPORT_COMMAND_ABORT_FRAGMENTED_READ)
                 raise e
 
-        return full_response_data
+        if is_export_data_response:
+            return full_response_data
+        else:
+            return TRANSPORT_RESULT.parse(full_response_data)

@@ -2,6 +2,7 @@ import binascii
 from datetime import datetime
 import logging
 import time
+import sys
 
 import click
 
@@ -136,6 +137,14 @@ def map_ers_to_key(tse: TseConnector, client_id, key_serial_number):
     )
 
 
+@click.command()
+@click.pass_obj
+def export_data(tse: TseConnector):
+    """Exports all data from the TSE and writes it to stdout. The exported data is
+    a tar archive."""
+    sys.stdout.buffer.write(tse.export_data())
+
+
 cli.add_command(start)
 cli.add_command(initialize_pin_values)
 cli.add_command(factory_reset)
@@ -148,6 +157,7 @@ cli.add_command(update_time)
 cli.add_command(start_transaction)
 cli.add_command(get_serial_number)
 cli.add_command(map_ers_to_key)
+cli.add_command(export_data)
 
 
 if __name__ == "__main__":
