@@ -12,6 +12,7 @@ class TseConnector:
         """Initializes the secure element and loads configuration data.
 
         :return: A dict containing:
+
             * ``version``: The version of the TSE.
             * ``serial``: The serial number of the TSE.
         """
@@ -95,9 +96,10 @@ class TseConnector:
         :param user_id: The user ID of the user to authenticate.
         :param pin: The PIN to authenticate with.
         :return: A dictionary containing
-            * ``authentication_result``: A ``TseConnector.AuthenticationResult``
+
+            * ``authentication_result``: A :class:`TseConnector.AuthenticationResult`
             * ``remaining_retries``: The number of authentication retries left. Only
-                relevant after having failed authentication.
+              relevant after having failed authentication.
         """
         response = self._transport.send(
             TransportCommand.AuthenticateUser,
@@ -185,6 +187,17 @@ class TseConnector:
         :param process_data: Process data for the transaction.
         :param process_type: Process type for the transaction.
         :param additional_data: Additional data for the transaction.
+
+        :return: A dictionary containing
+
+            * `transaction_number`: The identifying transaction number of the
+              transaction, used in subsequent calls to
+              :func:`~TseConnector.update_transaction` and
+              :func:`~TseConnector.finish_transaction`.
+            * `log_time`: The UNIX timestamp of the start of the transaction.
+            * `signature_counter`: The signature counter.
+            * `signature_value`: The signature value of the in-progress transaction.
+            * `serial_number`: The serial number of the key that was used to sign.
         """
         response = self._transport.send(
             TransportCommand.StartTransaction,
@@ -211,16 +224,19 @@ class TseConnector:
         process_type: str,
         additional_data: bytes,
     ):
-        """Closes a transaction transaction.
+        """Finishes a transaction.
 
         :param transaction_number: The transaction number to finish.
         :param client_id: The client ID.
         :param process_data: Process data for the transaction.
         :param process_type: Process type for the transaction.
         :param additional_data: Additional data for the transaction.
+
+        :return: A dictionary with items identical to that returned in
+            :func:`~TseConnector.start_transaction`.
         """
         response = self._transport.send(
-            TransportCommand.StartTransaction,
+            TransportCommand.FinishTransaction,
             [
                 (TransportDataType.BYTE_ARRAY, transaction_number.to_bytes(4, "big")),
                 (TransportDataType.STRING, client_id),

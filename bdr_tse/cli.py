@@ -129,10 +129,31 @@ def start_transaction(tse: TseConnector, client_id, process_data, process_type):
 
 @click.command()
 @click.pass_obj
+@click.option("--transaction_number", required=True, type=click.INT)
+@click.option("--client_id", required=True, type=click.STRING)
+@click.option("--process_data", required=True, type=click.STRING)
+@click.option("--process_type", required=True, type=click.STRING)
+def finish_transaction(
+    tse: TseConnector, transaction_number, client_id, process_data, process_type
+):
+    response = tse.finish_transaction(
+        transaction_number=transaction_number,
+        client_id=client_id,
+        process_data=process_data.encode("ascii"),
+        process_type=process_type,
+    )
+    response["signature_value"] = response["signature_value"].hex()
+    response["serial_number"] = response["serial_number"].hex()
+    response["log_time"] = datetime.fromtimestamp(response["log_time"]).isoformat()
+    click.echo(response)
+
+
+@click.command()
+@click.pass_obj
 @click.option("--client_id", required=True, type=click.STRING)
 @click.option("--key_serial_number", required=True, type=click.STRING)
 def map_ers_to_key(tse: TseConnector, client_id, key_serial_number):
-    return tse.map_ers_to_key(
+    tse.map_ers_to_key(
         client_id=client_id, key_serial_number=binascii.unhexlify(key_serial_number)
     )
 
