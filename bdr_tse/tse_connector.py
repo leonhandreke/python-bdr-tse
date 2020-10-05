@@ -1,7 +1,12 @@
 from typing import Tuple
 import enum
 
-from bdr_tse.transport import TransportCommand, Transport, TransportDataType
+from bdr_tse.transport import (
+    TransportCommand,
+    Transport,
+    TransportDataType,
+    GetConfigDataID,
+)
 
 
 class TseConnector:
@@ -308,3 +313,11 @@ class TseConnector:
             ],
         )
         return response
+
+    def get_time_sync_interval(self) -> int:
+        """Gets the required time sync interval in seconds."""
+        response = self._transport.send(
+            TransportCommand.GetConfigData,
+            [(TransportDataType.SHORT, GetConfigDataID.TimeSyncInterval)],
+        )
+        return int.from_bytes(response[0].data, "big")

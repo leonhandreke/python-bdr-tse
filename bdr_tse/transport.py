@@ -93,6 +93,18 @@ class TransportCommand(enum.IntEnum):
     UpdateCertificate = 26
 
 
+class GetConfigDataID(enum.IntEnum):
+    Version = (0x0000,)
+    SignatureAlgorithm = (0x0001,)
+    SupportedUpdateVariants = (0x0002,)
+    MaxKeys = (0x0003,)
+    MaxClients = (0x0004,)
+    MaxTransactions = (0x0005,)
+    TimeSyncInterval = (0x0006,)
+    SupportedTimeFormats = (0x0007,)
+    CertificationId = 0x0008
+
+
 class TransportDataType:
     BYTE = 0x01
     BYTE_ARRAY = 0x02

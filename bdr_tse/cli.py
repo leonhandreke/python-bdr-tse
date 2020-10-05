@@ -166,6 +166,12 @@ def export_data(tse: TseConnector):
     sys.stdout.buffer.write(tse.export_data())
 
 
+@click.command()
+@click.pass_obj
+def get_time_sync_interval(tse: TseConnector):
+    click.echo(tse.get_time_sync_interval())
+
+
 cli.add_command(start)
 cli.add_command(initialize_pin_values)
 cli.add_command(factory_reset)
@@ -179,6 +185,7 @@ cli.add_command(start_transaction)
 cli.add_command(get_serial_number)
 cli.add_command(map_ers_to_key)
 cli.add_command(export_data)
+cli.add_command(get_time_sync_interval)
 
 
 if __name__ == "__main__":
